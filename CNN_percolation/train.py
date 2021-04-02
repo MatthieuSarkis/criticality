@@ -12,10 +12,24 @@ import design
 import utils
 import pickle
 #====================================================================
+def __print_model_summary(model, stage_train_dir):
 
-def __create_and_compile_model(input_shape, K):
+    print(model.summary())
+    
+    try:
+        tf.keras.utils.plot_model(model,
+                                  to_file=os.path.join(stage_train_dir, 'model_summary.pdf'), 
+                                  show_shapes=True,
+                                  )
+    except:
+        with open(os.path.join(stage_train_dir, 'model_summary.log'), 'w') as f:
+            utils.get_model_summary(model, print_fn=lambda x: f.write(x + '\n'))
+#====================================================================
 
-    model = design.create_model(input_shape, K)
+
+def __create_and_compile_model(input_shape, K, dropout_rate):
+
+    model = design.create_model(input_shape, K, dropout_rate=dropout_rate)
 
     # Compiling the model            
     opt = tf.keras.optimizers.Adam()
@@ -33,7 +47,8 @@ def train(X, y,
           n_gpus=1,
           patience=10,
           epochs=10,
-          batch_size=32,
+          batch_size=None,
+          dropout_rate=0.2,
 
           dump_model_summary=True,
           set_lr_scheduler=True,
@@ -65,9 +80,9 @@ def train(X, y,
         #strategy = tf.distribute.MirroredStrategy(devices=devices_names[:n_gpus])
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
-            model = __create_and_compile_model((L,L,1), K)
+            model = __create_and_compile_model((L,L,1), K, dropout_rate)
     else:
-        model = __create_and_compile_model((L,L,1), K)
+        model = __create_and_compile_model((L,L,1), K, dropout_rate)
 
   
 
@@ -100,12 +115,8 @@ def train(X, y,
     # %%
     # print model info
     if dump_model_summary:
-        print(model.summary())
-        ## plot summary in a log file
-        tf.keras.utils.plot_model(model,
-                                  to_file=os.path.join(stage_train_dir, 'model_summary.pdf'), 
-                                  show_shapes=True,
-                                 )
+        __print_model_summary(model, stage_train_dir)
+        
 
 
 
